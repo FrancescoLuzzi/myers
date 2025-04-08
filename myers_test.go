@@ -47,3 +47,24 @@ func TestMyersDiff2(t *testing.T) {
 	assert.Equal(t, expectedEdits, edits)
 }
 
+func TestEditsToHunkString(t *testing.T) {
+	from := "A\nA\nA\nB\nC\nA\nB\nB\nA"
+	to := "A\nA\nC\nB\nA\nB\nA\nC\nC"
+	expectedHunk := `@@ -1,9 +1,9 @@
+A
+A
+-A
+-B
+C
++B
+A
+B
+-B
+A
++C
++C
+`
+	edits := slices.Collect(MyersDiff(from, to))
+	hunk := EditsToHunkString(edits)
+	assert.Equal(t, expectedHunk, hunk)
+}
