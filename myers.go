@@ -95,8 +95,7 @@ func backtrack(a, b []string, traces [][]int) []Edit {
 	x, y := len(a), len(b)
 	offset := x + y
 	prev_k, prev_x, prev_y := 0, 0, 0
-	edits := make([]Edit, x+y+1)
-	e := 0
+	edits := make([]Edit, 0, x+y+1)
 	for d, v := range slices.Backward(traces) {
 		if len(v) == 0 {
 			continue
@@ -110,27 +109,25 @@ func backtrack(a, b []string, traces [][]int) []Edit {
 		}
 		prev_x = v[offset+prev_k]
 		prev_y = prev_x - prev_k
-		if prev_x < 0 || prev_y < 0 {
-			break
-		}
 		// follow the diagonal
-		for x > prev_x && y > prev_y {
+		for x > prev_x && y > prev_y && x >= 0 && y >= 0 {
 			x -= 1
 			y -= 1
-			edits[e] = Edit{oldLine: x, newLine: y, content: a[x], op: OPEqual}
-			e += 1
+			edits = append(edits, Edit{oldLine: x, newLine: y, content: a[x], op: OPEqual})
+		}
+		// we don't have nothing more to add
+		if d == 0 {
+			break
 		}
 		if x == prev_x { //insert
-			edits[e] = Edit{oldLine: -1, newLine: prev_y, content: b[prev_y], op: OPAdd}
-			e += 1
+			edits = append(edits, Edit{oldLine: -1, newLine: prev_y, content: b[prev_y], op: OPAdd})
 		} else { //delete
-			edits[e] = Edit{oldLine: prev_x, newLine: -1, content: a[prev_x], op: OPDelete}
-			e += 1
+			edits = append(edits, Edit{oldLine: prev_x, newLine: -1, content: a[prev_x], op: OPDelete})
 		}
 		x = prev_x
 		y = prev_y
 	}
-	return edits[:e]
+	return edits
 }
 
 func splitLines(s string) []string {

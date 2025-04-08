@@ -25,3 +25,25 @@ func TestMyersDiff(t *testing.T) {
 	edits := slices.Collect(MyersDiff(from, to))
 	assert.Equal(t, expectedEdits, edits)
 }
+
+func TestMyersDiff2(t *testing.T) {
+	from := "A\nA\nA\nB\nC\nA\nB\nB\nA"
+	to := "A\nA\nC\nB\nA\nB\nA\nC\nC"
+	expectedEdits := []Edit{
+		{oldLine: 0, newLine: 0, content: "A", op: OPEqual},
+		{oldLine: 1, newLine: 1, content: "A", op: OPEqual},
+		{oldLine: 2, newLine: -1, content: "A", op: OPDelete},
+		{oldLine: 3, newLine: -1, content: "B", op: OPDelete},
+		{oldLine: 4, newLine: 2, content: "C", op: OPEqual},
+		{oldLine: -1, newLine: 3, content: "B", op: OPAdd},
+		{oldLine: 5, newLine: 4, content: "A", op: OPEqual},
+		{oldLine: 6, newLine: 5, content: "B", op: OPEqual},
+		{oldLine: 7, newLine: -1, content: "B", op: OPDelete},
+		{oldLine: 8, newLine: 6, content: "A", op: OPEqual},
+		{oldLine: -1, newLine: 7, content: "C", op: OPAdd},
+		{oldLine: -1, newLine: 8, content: "C", op: OPAdd},
+	}
+	edits := slices.Collect(MyersDiff(from, to))
+	assert.Equal(t, expectedEdits, edits)
+}
+
