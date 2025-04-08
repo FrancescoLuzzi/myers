@@ -1,6 +1,7 @@
 package diff
 
 import (
+	"fmt"
 	"iter"
 	"slices"
 	"strings"
@@ -18,6 +19,97 @@ type Edit struct {
 	op               opKind
 	oldLine, newLine int
 	content          string
+}
+
+func (e Edit) String() string {
+	switch e.op {
+	case OPAdd:
+		return fmt.Sprintf("+%s", e.content)
+	case OPDelete:
+		return fmt.Sprintf("-%s", e.content)
+	case OPEqual:
+		return e.content
+	default:
+		panic(fmt.Sprintf("unexpected diff.opKind: %#v", e.op))
+	}
+}
+
+const eqMaxCounter = 6
+const overlap = 3
+
+func EditsToHunkString(edits []Edit) string {
+	startEdit := 0
+	endEdit := 0
+	addedLines := 0
+	deletedLines := 0
+	inHunk := false
+	eqCounter := 0
+	builder := strings.Builder{}
+	n := 0
+OUTER:
+	for n < len(edits) {
+		edit := edits[n]
+		for edit.op == OPEqual && !inHunk {
+			n++
+			if n == len(edits) {
+				break OUTER
+			}
+			edit = edits[n]
+		}
+		if inHunk {
+			switch edit.op {
+			case OPEqual:
+				eqCounter++
+				if eqCounter == eqMaxCounter {
+					endEdit = max(n-(eqMaxCounter-overlap), startEdit)
+					writeHunk(&builder, edits, startEdit, endEdit, addedLines, deletedLines)
+					inHunk = false
+					eqCounter = 0
+					addedLines = 0
+					deletedLines = 0
+				}
+			case OPAdd:
+				addedLines++
+				eqCounter = 0
+			case OPDelete:
+				deletedLines++
+				eqCounter = 0
+			}
+		} else {
+			inHunk = true
+			switch edit.op {
+			case OPAdd:
+				addedLines++
+			case OPDelete:
+				deletedLines++
+			}
+			startEdit = max(n-overlap, 0)
+		}
+		n++
+	}
+	if inHunk {
+		writeHunk(&builder, edits, startEdit, len(edits), addedLines, deletedLines)
+	}
+	return builder.String()
+}
+
+func writeHunk(builder *strings.Builder, edits []Edit, startEdit, endEdit, addedLines, deletedLines int) {
+	eqLines := endEdit - startEdit - addedLines - deletedLines
+	startLineOld := 0
+	startLineNew := 0
+	switch edits[startEdit].op {
+	case OPEqual:
+		startLineOld = edits[startEdit].oldLine + 1
+		startLineNew = edits[startEdit].newLine + 1
+	default:
+		startLineOld = max(edits[startEdit].oldLine, edits[startEdit].newLine) + 1
+		startLineNew = startLineOld
+	}
+	builder.WriteString(fmt.Sprintf("@@ -%d,%d +%d,%d @@\n", startLineOld, eqLines+deletedLines, startLineNew, eqLines+addedLines))
+	for i := startEdit; i < endEdit; i++ {
+		builder.WriteString(edits[i].String())
+		builder.WriteRune('\n')
+	}
 }
 
 func Seq2Value[T, G any](seq iter.Seq2[T, G]) iter.Seq[G] {
